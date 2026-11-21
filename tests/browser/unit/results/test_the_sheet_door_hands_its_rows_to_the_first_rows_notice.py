@@ -1,7 +1,7 @@
 """Both doors of the sheet (`present`, `append`) hand what they saved to the first-rows notice (node 2.681)."""
 from __future__ import annotations
 
-from nucleo.turn import first_rows_notice as frn
+from nucleo.errands import first_rows_notice as frn
 from widgets.results import data as sheet
 
 

@@ -1,6 +1,6 @@
 """The SYNCHRONOUS entries into the worker registry, marshalled to the server loop that owns it (§v3·D/O).
 
-The FlashBrain calls these from its job thread and never awaits them. Moved out of the dispatch facade (refactor2710-01)
+A caller off the registry's loop calls these and never awaits them. Moved out of the dispatch facade (refactor2710-01)
 when they became consequence doors: `dispatch` re-exports them under their historical names, and every name they read
 from the registry is read through it at call time, so a patch on `dispatch` still governs them.
 """
@@ -32,14 +32,9 @@ def inject_soon(which: str, message: str) -> None:
 
 
 def his_words_may_reach_an_errand() -> bool:
-    """The ONE owner rule (`stop.card_owns_the_turn`) for a door holding nothing of the turn: its brief by trace, and the
-    card or music doors the turn already went through (`consequence.reached`)."""
-    from nucleo.request import stop as _stop
-    from nucleo.turn import brief as _tb, pick_pending as _pp
-    brief = _tb.of_this_turn()
-    owns = _stop.card_owns_the_turn(brief, acted={"widget": consequence.reached("widget.data", "music")})
-    _pp.arbiter(brief, str((brief or {}).get("judged") or "") if isinstance(brief, dict) else "", card_owns=owns)  # shadow
-    return not owns
+    """A card his words already acted on (the widget or music doors this request went through, `consequence.reached`)
+    owns them: the errand running behind it is neither steered nor stopped (V2-831 T-19)."""
+    return not consequence.reached("widget.data", "music")
 
 
 def relay_his_words(which: str, words: str) -> bool:
@@ -53,7 +48,6 @@ def relay_his_words(which: str, words: str) -> bool:
             text=f"{which}: {words}"[:160], extra={"cat": "flash", "kind_diag": "relay_refused", "to": which})
         return False
     dispatch.inject_soon(which, words)
-    __import__("nucleo.turn.pick_pending", fromlist=["x"]).noted(which, words)   # V2-878 §5, shadow
     return True
 
 

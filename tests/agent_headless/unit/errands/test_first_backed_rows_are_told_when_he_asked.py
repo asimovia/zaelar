@@ -9,7 +9,7 @@ from __future__ import annotations
 import pytest
 
 from i18n import langs
-from nucleo.turn import first_rows_notice as frn
+from nucleo.errands import first_rows_notice as frn
 
 ERRAND = {"id": "ls1", "request": "Find a used Lagoon 440 catamaran under $325,000", "secs": 300, "sheet": "ab12-ls1"}
 ROWS = [

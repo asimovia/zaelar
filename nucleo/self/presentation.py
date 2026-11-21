@@ -49,7 +49,7 @@ def pending(name: str) -> str:
 
 def settle(reply: str, name: str) -> bool:
     """A reply that carried the presentation: said for good when it names the agent. True when it settled now."""
-    from nucleo.turn import identity as _identity
+    from nucleo.self import identity as _identity
     if not str(reply or "").strip() or not _identity.sentences_with(name, reply):
         return False                    # it did not present itself: the presentation rides the next turn
     try:

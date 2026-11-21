@@ -111,10 +111,9 @@ async def run(uid: str, entry: dict, text: str, choice: int | None = None) -> di
     from nucleo.request import consent_ask
     q = consent_ask.question(wid, act, payload)
     inline_ask.held(uid, wid, act, payload, {"ok": False, "consent": "ask_consent"}, question=q, options=consent_ask.yes_no())
-    try:                                     # the row's question is SAID, in the turn or out of it
-        from nucleo.circuit import verdict as V
-        from nucleo.turn import mouth
-        mouth.say(q, verdict=V.ASKED.name, door=base(wid), key=f"{base(wid)}:{act}:{abs(hash(q)) % 10**8}")
+    try:                                     # the row's question is SAID, out of turn, with its key
+        from nucleo.pulse import say_soon
+        say_soon.notify_soon(q, key=f"{base(wid)}:{act}:{abs(hash(q)) % 10**8}")
     except Exception as e:  # noqa: BLE001
         note(e)
     return {"ok": False, "row": uid, "asked": True}

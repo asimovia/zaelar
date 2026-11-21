@@ -1,8 +1,9 @@
 """The `Tools` port's acts on the agent ITSELF (INI-078 F2 step 6): its name and how it listens, his standing rules
 and style, and its own controls — each to the door that already does it, never rebuilt here.
 
-  rename     `turn.identity.apply_rename_now` + `persist_rename`: the wake word tracks the new name at once
-  attention  `turn.identity.persist_attention_mode`, among the modes the attention module declares
+  rename     `self.identity.apply_rename_now` + `persist_rename`: the wake word tracks the new name at once, and the
+             memory may file the name he ordered (`identity.ordered`)
+  attention  `self.identity.persist_attention_mode`, among the modes the attention module declares
   rule       `flash.style_directive.write_rule`: his words shaped ONCE into rows of the one rules table (a style knob,
              a rule for a widget, a channel or a person) — nothing held only in the session
   controls   `acts.self_controls.apply`: the screen's own button door (🔊, volume, mic, ⏻, voice, face, camera) by
@@ -28,10 +29,11 @@ def _refresh() -> None:
 def _rename(args: dict) -> ToolResult:
     import asyncio
 
-    from nucleo.turn import identity
-    name = str(args.get("name") or "").strip()
+    from nucleo.self import identity
+    name = str(args.get("name") or "").strip()[:identity.NAME_MAX]
     if not name:
         return ToolResult("failed", {"reason": "no_name"})
+    identity.ordered(name)
     identity.apply_rename_now(name)
     asyncio.run(identity.persist_rename(name))
     _refresh()
@@ -41,7 +43,7 @@ def _rename(args: dict) -> ToolResult:
 def _attention(args: dict) -> ToolResult:
     import asyncio
 
-    from nucleo.turn import identity
+    from nucleo.self import identity
     from voice import attention
     mode = str(args.get("mode") or "").strip().lower()
     modes = list(attention._VALID_MODES)

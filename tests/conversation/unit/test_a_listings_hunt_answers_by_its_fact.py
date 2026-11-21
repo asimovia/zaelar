@@ -12,7 +12,7 @@ from nucleo.conversation_host import acts_tasks, routing
 
 
 def _no_flow(monkeypatch, joined=None):
-    from nucleo.turn import open_flows
+    from nucleo.errands import open_flows
 
     async def join(text):
         return dict(joined or {})

@@ -6,8 +6,8 @@ was WRITTEN: the prompt told the model «Tú te llamas Apollo 11» and the wake 
 
 V2-747 excused this slot from two guards (correctly), so it needs an answer of its own to «does this utterance give
 the assistant a name?». V2-752 asked Jev that question again, after the reply (`rename_decision`, 19 re-runs in 14
-days). V2-851 F5 reads the answer the turn already paid for: the brief's SURE `identity_change = rename` verdict,
-kept by `nucleo.turn.identity` (`rename_heard`). No verdict, an old one, or another name → the atom is dropped.
+days). Since INI-078 the answer is the model's own act: `rename_yourself` records the name he ordered
+(`nucleo.self.identity.ordered`), read by `rename_heard`. No order, an old one, or another name → the atom is dropped.
 """
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ import asyncio
 import pytest
 
 from memory import slots
-from nucleo.turn import identity
+from nucleo.self import identity
 
 
 @pytest.fixture(autouse=True)
@@ -26,32 +26,20 @@ def clean():
     identity._HEARD.update(name="", at=0.0)
 
 
-def _sure(name="", conf=0.95):
-    import threading
-    ev = threading.Event()
-    ev.set()
-    brief = {"event": ev, "turn_id": "t", "result": {identity.KEY: {"choice": identity.RENAME, "confidence": conf}}}
-    asyncio.run(identity.settle(brief, name, lambda *a, **k: None, ingest=False))
-
-
 def test_a_corrected_search_term_is_not_a_new_name():
-    """No rename verdict this session: «Apollo 11» from the distiller is dropped."""
+    """No rename ordered this session: «Apollo 11» from the distiller is dropped."""
     assert not identity.rename_heard("Apollo 11")
 
 
-def test_a_real_rename_still_lands(monkeypatch):
-    monkeypatch.setattr(identity, "apply_rename_now", lambda n: None)
-    _sure("Johnny")
+def test_a_real_rename_still_lands():
+    identity.ordered("Johnny")
     assert identity.rename_heard("Johnny") and identity.rename_heard("johnny")
-    assert not identity.rename_heard("Apollo 11"), "another name than the one the turn gave is not his rename"
+    assert not identity.rename_heard("Apollo 11"), "another name than the one he ordered is not his rename"
 
 
-def test_an_unsure_or_old_verdict_renames_nothing(monkeypatch):
-    monkeypatch.setattr(identity, "apply_rename_now", lambda n: None)
-    _sure("Johnny", conf=0.6)
-    assert not identity.rename_heard("Johnny"), "below SURE nothing is heard"
-    _sure("Johnny")
+def test_an_old_order_renames_nothing():
     import time
+    identity.ordered("Johnny")
     assert not identity.rename_heard("Johnny", now=time.time() + identity.HEARD_S + 1)
 
 

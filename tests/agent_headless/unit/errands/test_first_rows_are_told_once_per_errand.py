@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from i18n import langs
-from nucleo.turn import first_rows_notice as frn
+from nucleo.errands import first_rows_notice as frn
 
 ERRAND = {"id": "t7", "request": "Busco actividades para niños en Madrid", "secs": 120, "sheet": "cd34-t7"}
 ROWS = [{"title": "Taller de cerámica infantil Arcilla", "price": "15 €", "url": "https://a.es/1"},

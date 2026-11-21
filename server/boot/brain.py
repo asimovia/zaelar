@@ -109,25 +109,6 @@ def dispatcher(active_brain, first_lifespan_entry: bool) -> bool:
 
 
 
-def watchers() -> None:
-    # Action map (V2-539): the WATCH half — measures what the map is missing (turns the model resolved with a
-    # single canvas action). Bus only (`turn.completed`), so it covers voice and probe
-    # from one place, and its failure never touches the turn.
-    try:
-        from nucleo.actionmap import watch as _amap_watch
-        _amap_watch.start()
-    except Exception as e:
-        logger.warning(f"actionmap watch start failed (voice/chat unaffected): {e}")
-    # CONTEXT PACKS (V2-675): the introduction phase watches the same topic, for the opposite reason — to
-    # notice when it is OVER and archive itself. It subscribes to nothing once the phase has closed, so on
-    # an installation that is past its first conversation this line costs one settings read at boot.
-    try:
-        from nucleo.turn.prompt.packs import introduction as _intro_pack
-        _intro_pack.start()
-    except Exception as e:
-        logger.warning(f"context packs start failed (conversation unaffected): {e}")
-
-
 async def start(app, first_lifespan_entry: bool) -> dict:
     """Runs the phase; returns the handles the shutdown needs."""
     from config.v2 import active_brain
@@ -139,6 +120,5 @@ async def start(app, first_lifespan_entry: bool) -> dict:
         genome.boot()
     except Exception as e:  # noqa: BLE001 — the genome's bookkeeping never stops the engine booting
         logger.warning(f"genome: boot step failed ({e!r})")
-    watchers()
     return {"loop_on": loop_on, "pulse_sse_sub": pulse_sub, "pulse_sse_task": pulse_task,
             "slow_on": slow_on}

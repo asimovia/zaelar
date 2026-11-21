@@ -18,8 +18,8 @@ NOT THE LOCK SCREEN. Push is DECLARED by the caller.
 
 V2-851 F2 — this is THE out-of-turn mouth: everything the agent says outside a turn comes through `notify`, with an
 identity — the `task_id` of the row it belongs to, or a notice `key` when it belongs to no task (a cron, an inbound
-message, a sign-in left halfway). `voice/proactive.notify` is only the speaking primitive this door uses; the
-in-turn mouth is `nucleo/turn/reply`.
+message, a sign-in left halfway). `voice/proactive.notify` is only the speaking primitive this door uses. A door that
+runs with no await says its line through `pulse/say_soon.py`.
 """
 from __future__ import annotations
 

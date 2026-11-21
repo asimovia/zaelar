@@ -2,7 +2,7 @@
 
 Two doors needed the same answer and had none:
 
-  · the status line (`errands_of_a_turn.status_owed`) answered «but the jump, did you actually make it higher?»
+  · the status line (the old turn's `status_owed`) answered «but the jump, did you actually make it higher?»
     with every live errand's phase — the report and the monitor, never the game he asked about, three times;
   · the list lane (`nucleo/batch`) took «del coche, ¿qué tal de autonomía real? ¿Y el juego? …» — four
     sentences about three errands already running — for a NEW list, and answered each of four such turns with
@@ -16,6 +16,23 @@ same tokenizer in every language, ranked by the length of the words matched.
 from __future__ import annotations
 
 from loguru import logger
+
+
+#: The engine's own wrapper around a listing hunt (written by the old turn's listing lane): its words are OURS, not his
+#: — «real», «price», «link» are in every listing errand's goal, so they never name the hunt he asked about.
+LISTING_PREFIX = "Find real marketplace listings for: "
+
+
+def ask_of(request: str) -> str:
+    """What HE asked for, out of an errand's goal: a listing hunt is its query, without our wrapper and bounds.
+    Any other goal is returned whole — those are written from his words (`errand_title`'s rule)."""
+    r = str(request or "")
+    if not r.startswith(LISTING_PREFIX):
+        return r
+    q = r[len(LISTING_PREFIX):]
+    for cut in (" (", ". Put the real"):
+        q = q.split(cut, 1)[0]
+    return q.strip()
 
 
 def known(*, with_finished: bool = False) -> list[dict]:
@@ -135,7 +152,6 @@ def named(text: str, errands: list[dict] | None = None) -> list[dict]:
     the monitor alone. A short word shared by chance can add an errand he did not mean — one line too many,
     which is the cheaper error than leaving out the one he asked about."""
     from nucleo import dispatch as _d
-    from nucleo.turn.errands_of_a_turn import ask_of
     errands = known() if errands is None else errands
     said = _words(text)
     if not said or not errands:
@@ -193,7 +209,6 @@ def spoken_name(errand: dict, limit: int = 72) -> str:
     Crear un widget nuevo para el canvas: un juego de plataformas tipo Sup: esperando…; Find real marketplace
     listings for: monitor de ordenador usado (condit: mirando «results»» was read to him as a status."""
     from nucleo.request import title as _et
-    from nucleo.turn.errands_of_a_turn import ask_of
     for name in (errand.get("title"), errand.get("label")):
         name = str(name or "").strip()
         if name and not name.endswith("…"):
@@ -215,7 +230,7 @@ def _entry(eid: str, request: str, **extra) -> dict:
 
 
 def _already(request: str, existing: list[dict]) -> bool:
-    from nucleo.turn.errands_of_a_turn import same_errand
+    from nucleo.matching import same_errand
     return any(same_errand(request, str(e.get("request") or "")) for e in existing)
 
 

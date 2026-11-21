@@ -12,7 +12,7 @@ import time
 
 import pytest
 
-from nucleo.turn import open_flows as flow_of
+from nucleo.errands import open_flows as flow_of
 from nucleo.workers import ended
 from nucleo.workers.session import SessionRecord
 from observability import identity

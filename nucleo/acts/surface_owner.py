@@ -160,7 +160,7 @@ def _claim(wid: str, owner: str, request: str, emit=None) -> None:
     _CLAIMS[wid] = {"owner": owner, "request": request, "at": time.time()}
     _bound(_CLAIMS)
     if request and _sheet_of(wid):
-        from nucleo.turn.errands_of_a_turn import same_errand
+        from nucleo.matching import same_errand
         twin = next((w for w, c in list(_CLAIMS.items()) if w != wid and _sheet_of(w) and c.get("request")
                      and same_errand(request, c["request"])), "")
         if twin:

@@ -21,8 +21,9 @@ def test_the_declared_choices_are_the_modules_own():
 
 
 def test_a_rename_reaches_the_wake_word_the_memory_and_the_prefix(monkeypatch):
-    from nucleo.turn import identity
+    from nucleo.self import identity
     seen = []
+    monkeypatch.setattr(identity, "_HEARD", {"name": "", "at": 0.0})
     monkeypatch.setattr(identity, "apply_rename_now", lambda n: seen.append(("now", n)))
 
     async def persist(n):
@@ -31,6 +32,7 @@ def test_a_rename_reaches_the_wake_word_the_memory_and_the_prefix(monkeypatch):
     monkeypatch.setattr(acts_self, "_refresh", lambda: seen.append(("prefix",)))
     assert acts_self.run("rename", {"name": "w_nova"}).data == {"named": "w_nova"}
     assert seen == [("now", "w_nova"), ("kept", "w_nova"), ("prefix",)]
+    assert identity.rename_heard("w_nova") and not identity.rename_heard("w_other"), "the memory may file only his name"
 
 
 def test_a_rule_he_dictates_is_shaped_from_his_words_and_reaches_the_style(monkeypatch):

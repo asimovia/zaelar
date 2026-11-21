@@ -82,3 +82,9 @@ def containment(a: set, b: set) -> float:
 #: purpose: over-merging swallows a genuinely new task into an old session (the V2-123 flow-fusion class), and
 #: that is worse than the duplicate worker this bar exists to prevent.
 SAME_ERRAND = 0.45
+
+
+def same_errand(a: str, b: str) -> bool:
+    """The dedup's measure: is the smaller set of content words inside the bigger one?"""
+    wa, wb = content_words(a), content_words(b)
+    return bool(wa and wb) and containment(wa, wb) >= SAME_ERRAND

@@ -7,7 +7,7 @@ still governs every call.
 """
 from __future__ import annotations
 
-from nucleo.turn import first_rows_notice as _first_rows
+from nucleo.errands import first_rows_notice as _first_rows
 from search import candidacy as _cand
 
 from . import category_gate as _gate

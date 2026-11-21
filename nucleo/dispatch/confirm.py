@@ -68,7 +68,7 @@ def _sweep_confirm(now: float | None = None) -> None:
 
 def _forget_declined_like(request: str) -> None:
     """Asked again for the same errand: the old «no» is no longer the fact about it."""
-    from nucleo.turn.errands_of_a_turn import same_errand
+    from nucleo.matching import same_errand
     for k in [k for k, v in _DECLINED_CONFIRM.items() if same_errand(str(v.get("request") or ""), request)]:
         _DECLINED_CONFIRM.pop(k, None)
 
@@ -110,8 +110,6 @@ def remember_code_change(task_id: str, request: str, task: "Task", *, sheet: str
     _sweep_confirm()
     _EXPIRED_CONFIRM.pop(str(task_id), None)
     _forget_declined_like(request)
-    from nucleo.turn import declined_build as _db
-    _db.asked(request)
     _PENDING_CONFIRM[str(task_id)] = {
         "request": request, "kind": (task.kind or "code"), "trusted": bool(task.trusted),
         "context": dict(task.context or {}),

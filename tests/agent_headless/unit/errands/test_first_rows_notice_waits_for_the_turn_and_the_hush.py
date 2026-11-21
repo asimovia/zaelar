@@ -7,7 +7,7 @@ import asyncio
 import pytest
 
 from i18n import langs
-from nucleo.turn import first_rows_notice as frn
+from nucleo.errands import first_rows_notice as frn
 from voice import observer, proactive
 
 ERRAND = {"id": "w3", "request": "Find an apartment in the Mission", "secs": 200, "sheet": "ef56-w3"}

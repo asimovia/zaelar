@@ -996,6 +996,15 @@ _PACKAGE_CEILINGS["memory"] += 9           # same step: a row born before it was
 _TOTAL_MAX += 197    # same step, measured: the semaphore, `max_parallel` and its settings row went (−), the lanes came (+)
 _PACKAGE_CEILINGS["nucleo/whisper"] = 554   # 2026-11-21 INI-078 L1 / V2-942 W1: the whisperer moves out of the old turn, OFF and with no subscriber
 _PACKAGE_CEILINGS["nucleo/turn"] = 8251     # same move; the old turn only falls from here
+# 2026-11-21 INI-078 L1 B2: what something live reaches in the old turn MOVES to its owner (`self/identity`, `matching.same_errand`,
+# `errands/{named.ask_of, open_flows, first_rows_notice}`, `results/asked_facts`, `pulse/say_soon`); the old copies stay one
+# commit, for the engine that imports lazily, and go with the old turn (B7) — these ceilings fall back with it
+_PACKAGE_CEILINGS["nucleo (top)"] = 9301
+_PACKAGE_CEILINGS["nucleo/errands"] = 3321
+_PACKAGE_CEILINGS["nucleo/pulse"] = 5468
+_PACKAGE_CEILINGS["nucleo/self"] = 815
+_PACKAGE_CEILINGS["widgets"] = 49116
+_TOTAL_MAX += 154
 
 def test_the_total_only_shrinks():
     total = sum(_package_totals().values())

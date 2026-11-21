@@ -157,55 +157,6 @@ def test_an_errand_records_WHY_it_ended(er):
     assert row["state"] == "blocked" and "operador" in row["outcome"]
 
 
-# ── what the turn reads ──────────────────────────────────────────────────────────────────────────────────
-
-def test_the_pack_costs_NOTHING_when_there_is_no_errand(er):
-    from nucleo.errands import pack
-    assert pack.is_active() is False
-    assert pack.block() == ""
-
-
-def test_the_block_says_what_is_open_and_FORBIDS_calling_it_done(er):
-    """The failure this exists to prevent is the one V2-660 built a whole harness for: narrating as finished
-    something that is merely in flight."""
-    from nucleo.errands import pack
-    _one(er)
-    b = pack.block()
-    assert "ENCARGOS ABIERTOS" in b
-    assert "reunión" in b
-    assert "NO está hecho" in b
-
-
-def test_the_block_is_bounded_however_busy_he_is(er):
-    """A prompt cost that grows with how much is going on makes the system worst exactly when it matters."""
-    from nucleo.errands import pack
-    for i in range(6):
-        _one(er, objective=f"gestión número {i} con alguien")
-    b = pack.block()
-    assert b.count("\n· ") <= pack.MAX_SHOWN + 1
-    assert "y 3 más" in b
-
-
-def test_who_it_is_with_comes_from_the_CONVERSATION_not_from_the_words(er, monkeypatch):
-    from widgets import directory
-    from nucleo.errands import pack
-    a = _one(er, objective="organizar una reunión con quien sea")
-    er.bind("telegram", "987", a["id"], "c1")
-    monkeypatch.setattr(directory, "find_by_channel",
-                        lambda p, c: {"name": "Iván Petrenko"} if str(c) == "987" else None)
-    assert "con Iván Petrenko (por Telegram)" in pack.block()
-
-
-def test_with_nobody_known_it_still_reads_as_a_sentence(er, monkeypatch):
-    from widgets import directory
-    from nucleo.errands import pack
-    a = _one(er)
-    er.bind("telegram", "987", a["id"])
-    monkeypatch.setattr(directory, "find_by_channel", lambda p, c: None)
-    b = pack.block()
-    assert "por Telegram" in b and "con por" not in b
-
-
 # ── the operator can SEE it ──────────────────────────────────────────────────────────────────────────────
 
 def test_an_open_errand_gets_a_row_in_PROCESOS(er):

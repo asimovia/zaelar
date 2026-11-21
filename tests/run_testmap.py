@@ -4805,11 +4805,11 @@ DOMAINS: list[dict] = [
         {"id": "2.677", "title": "Every `agent_report` command our own instructions name (read from every string literal under nucleo/) parses; `phase \"…\" --done 1` — the measured call that died on exit code 2 — reports the phase AND the step; «3/5», «1,2,3» are step counts (search-buy-boat-multicountry ES)",
             "ch": UNIT, "paths": ['tests/agent_headless/unit/workers/test_every_report_flag_our_instructions_name_parses.py']},
         {"id": "2.678", "title": "An errand's FIRST backed rows (a link or a source) are told to him unprompted when he asked to be told («lmk», «avísame», «keep me posted») or we promised («te aviso», «I'll flag it») since it started — the best three, in his language; no ask, no live errand or bare rows → nothing (search-buy-boat-multicountry, 34 s after his last turn)",
-            "ch": UNIT, "paths": ['tests/agent_headless/unit/turn/test_first_backed_rows_are_told_when_he_asked.py']},
+            "ch": UNIT, "paths": ['tests/agent_headless/unit/errands/test_first_backed_rows_are_told_when_he_asked.py']},
         {"id": "2.679", "title": "The first-rows notice is said once per errand: never repeated, closed when a reply already named a row (a word of the errand itself is not a row), two appends a second apart schedule one check, the default sheet belongs to no errand",
-            "ch": UNIT, "paths": ['tests/agent_headless/unit/turn/test_first_rows_are_told_once_per_errand.py']},
+            "ch": UNIT, "paths": ['tests/agent_headless/unit/errands/test_first_rows_are_told_once_per_errand.py']},
         {"id": "2.680", "title": "The first-rows notice waits for a turn in flight (his line with no reply yet) and for a stop's hush, then goes once through proactive.notify with its own event; a turn that never ends gives up without speaking",
-            "ch": UNIT, "paths": ['tests/agent_headless/unit/turn/test_first_rows_notice_waits_for_the_turn_and_the_hush.py']},
+            "ch": UNIT, "paths": ['tests/agent_headless/unit/errands/test_first_rows_notice_waits_for_the_turn_and_the_hush.py']},
         {"id": "2.681", "title": "Both doors of the results sheet (present, append) hand the rows they saved to the first-rows notice; a sheet with no live errand schedules nothing",
             "ch": UNIT, "paths": ['tests/browser/unit/results/test_the_sheet_door_hands_its_rows_to_the_first_rows_notice.py']},
         # spec gates at the sheet's door (2026-10-14): a contradicted spec, a pack, another capacity, page chrome, a copy
@@ -5097,7 +5097,7 @@ DOMAINS: list[dict] = [
         {"id": "2.664", "title": "A worker's `web_search` result carries the door's verdict on the rows it brought (handed, landed, which were turned away and why); a search whose rows all landed is left as it was",
             "ch": UNIT, "paths": ['tests/agent_headless/unit/workers/test_a_searchs_rows_the_door_turns_away_ride_its_result.py']},
         {"id": "2.700", "title": "A row that does not carry what he asked about after commissioning (title or a VERIFIED fact) is offered by no delivery tail (the backstop, the unprompted first-rows notice) — «I won't push the sheet on you again» plus three rows without pressing or condition (search-buy-vinyl EN)",
-            "ch": UNIT, "paths": ['tests/agent_headless/unit/flash/test_a_row_without_what_he_asked_about_is_not_news.py']},
+            "ch": UNIT, "paths": ['tests/browser/unit/results/test_a_row_without_what_he_asked_about_is_not_news.py']},
         {"id": "2.702", "title": "A worker note about OUR plumbing («Criterios duros registrados…», the sheet contract, app ids) is said neither by the status line nor by a wait's step line; one reader serves both (search-buy-vinyl ES)",
             "ch": UNIT, "paths": ['tests/agent_headless/unit/turn/test_a_status_never_says_our_plumbing.py']},
         {"id": "2.703", "title": "A status sentence QUOTES each errand's name — an English album title in a Spanish status read as the line's language (search-buy-vinyl ES)",
@@ -6852,17 +6852,16 @@ DOMAINS: list[dict] = [
                                   "handed on, and its face names no row; a mixed pass reports only the kept rows; one "
                                   "declared reading `results.holding` (kept · rejected · none)",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/flash/test_a_sheet_that_rejected_every_row_holds_no_findings.py"]},
-        {"id": "4.482", "title": "An order whose one act the brief gives to an app is that card's, even with an errand on "
-                                  "its subject running (V2-879 O1): `wants_words=act` + catalogue at VETO + `acts_asked` "
-                                  "not several → route `card` (also when the route settled before the brief), the portal and the relay door tell the errand nothing; "
-                                  "a stop, two acts, a told answer, a process banner, the errand's own sheet or a card-building errand keep it",
-            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_a_card_act_is_not_steered_into_the_errand_on_its_subject.py"]},
+        {"id": "4.482", "title": "His words stay with the card his request already acted on, even with an errand on its subject "
+                                  "running (V2-879 O1, V2-831 T-19): a request that went through a card's door (`widget.data`, "
+                                  "`music`) makes the one relay door tell the errand nothing; with no card reached his words reach it",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/test_his_words_stay_with_the_card_his_request_reached.py"]},
         {"id": "4.516", "title": "The image viewer says which picture each screen shows and whether its slideshow runs (V2-884 C8 step 5): `shown` (1-based), `title` (both following the set and the index) and `slideshow` after every paint — the slideshow advances on each screen on its own; `select`/`next`/`previous` and a new set are `?ordered` on each screen until it acks; two screen pairs; disarmed → red",
             "ch": UNIT, "paths": ["tests/browser/unit/imagenes/test_the_viewer_reports_the_picture_it_shows.py"]},
         {"id": "4.483", "title": "The just-ended errands a request can reopen belong to ONE conversation (V2-879 O2): a new "
                                   "session empties the pool, an errand born before the clean never enters it, and how "
                                   "long each end stays reopenable is declared by how it ended (`REOPEN_GRACE_S`)",
-            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_a_cleaned_session_leaves_no_errand_to_reopen.py"]},
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/errands/test_a_cleaned_session_leaves_no_errand_to_reopen.py"]},
         # V2-883 — a periodic job is an OBJECT: one reader, one door by reference, an honest result, no form.
         {"id": "4.484", "title": "A periodic job is addressed by REFERENCE and its result is the truth (V2-883): the "
                                   "scheduler's one reader is the app shape (`{id, label, field, hint}`, short label); "
@@ -7745,8 +7744,8 @@ DOMAINS: list[dict] = [
         {"id": "2.1600", "title": "The worker bridge's hints name only the subcommands its parser serves (V2-854): the fallback's list is read from the parser (`wait` went with 331f77552) and each declared subcommand has its own hint",
             "ch": UNIT, "paths": ["tests/agent_headless/unit/test_the_bridge_hints_name_only_its_subcommands.py"]},
         # V2-854 F4 — the doors (writer c, nodes 2.1550–2.1579).
-        {"id": "2.1550", "title": "A request the door refuses is never answered as started (V2-852 T21, V2-854 F4, I4): with the agent stopped (⏻) the errand portal reads blocks_new_work itself — no id, no row, nothing on the bus — and its outcome is one `cannot` line in his language naming the request; the silent-start line is said only for an errand that started",
-            "ch": UNIT, "paths": ["tests/agent_headless/unit/turn/test_a_stopped_agent_never_answers_started.py"]},
+        {"id": "2.1550", "title": "A request the door refuses is never answered as started (V2-852 T21, V2-854 F4, I4): with the agent stopped (⏻) the errand portal reads blocks_new_work itself — no id, no row, nothing on the bus — and its outcome is one line in his language naming the request, said out of turn",
+            "ch": UNIT, "paths": ["tests/agent_headless/unit/test_a_stopped_agent_never_answers_started.py"]},
         {"id": "2.1551", "title": "One owner per word, and a shipped manifest is never his file (V2-854 F4): a word the directory resolves to a person (her alias, or every word a whole word of her name) is refused at the card's alias door, which names `contactos.set_alias`; a substring, a group's name or nobody's word is not; a shipped app keeps his words in the per-tenant overlay the catalog lays over its manifest (catalog, registry and identify read it, the manifest's bytes never move); his own app writes its own manifest",
             "ch": UNIT, "paths": ["tests/browser/unit/widgets/test_a_persons_word_is_never_a_cards_alias.py"]},
         {"id": "2.1552", "title": "The send uses the channel the contact really has (V2-854 F4, verified): the send door's target carries her stored WhatsApp chat id (`@lid`) before her phone, and the connector addresses that id, never one rebuilt from the phone; a contact with only a phone goes by that phone",

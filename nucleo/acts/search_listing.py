@@ -114,7 +114,7 @@ async def hunt(asked_text: str, args: dict) -> dict:
     to the results sheet, shown by the pass; who says what was found is the caller's."""
     import asyncio
 
-    from nucleo.turn import open_flows as _flow
+    from nucleo.errands import open_flows as _flow
 
     from nucleo.errands import launches as _launches
     from nucleo.acts.errand import whole_request

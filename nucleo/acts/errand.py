@@ -81,11 +81,6 @@ def escalate_to_slowbrain(request: str, *, context: dict | None = None, task_id:
             return 0
     except Exception as e:  # noqa: BLE001 — the gate may never break the portal
         logger.debug(f"escalate: capability gate skipped: {e!r}")
-    # THE ONE DOOR (V2-844 F2): a turn's request is routed before it opens anything — joined, absorbed, stopped,
-    # conversation or a discarded turn's launch start nothing here; `new` and `replace` go on.
-    from nucleo.turn import open_flows as _open
-    if _open.a_discarded_turn(req, ctx0):
-        return 0
     # A QUESTION IS NOT THEATRE (V2-655): a turn that ASKED permission aloud has no order yet — it is parked.
     asked = strip_system_notes(str(ctx0.get("asked") or ""))    # our own notes' «¿La hago?» is nobody's offer
     if asked and not (ctx0.get("confirmed") or ctx0.get("offered")):
@@ -156,11 +151,11 @@ def _reasks_a_parked_errand(asked: str, req: str) -> bool:
     newer «offer», and his «Sí, móntalo» was judged against the wrong question.) The yardstick is the one every
     door reads, `named_errand.named`, over the parked errands alone."""
     try:
-        from nucleo.turn import errands_of_a_turn as _eot
         from nucleo.errands import named as _ne
+        from nucleo.matching import same_errand
         parked = [e for e in _ne.known() if e["parked"]]
         hits = _ne.named(asked, parked) if parked else []
-        return any(not _eot.same_errand(req, e["request"]) for e in hits)
+        return any(not same_errand(req, e["request"]) for e in hits)
     except Exception as e:  # noqa: BLE001 — the safe side is today's rule: park it
         logger.debug(f"escalate: parked errands unreadable — {type(e).__name__}: {e}")
         return False
