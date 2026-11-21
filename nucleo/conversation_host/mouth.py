@@ -59,6 +59,8 @@ class WallMouth:
         if notice:
             _card(order)                                # shown: its card, as every notice
         else:
+            from nucleo.conversation_host import routing
+            routing.ours_heard(order.text)              # shown whole on his screen: read, the owner's last line
             observer.emit("transcript", "zaelar", text=order.text, role="assistant", extra=extra, piece="f_mouth")
         if self.ack is not None:
             now = self._clock.now_ms()
@@ -86,6 +88,9 @@ class WallMouth:
                     wall.ours(order, "shown")
                 else:                                   # ONE heard number: the words that sounded, as the record has it
                     wall.ours(order, "ended", None if sig.heard_chars is None else len(heard))
+                if heard.strip() and started:
+                    from nucleo.conversation_host import routing
+                    routing.ours_heard(heard)           # what SOUNDED: the send owner reads his answer against it
                 if heard.strip():
                     observer.emit("transcript", "zaelar", text=heard, role="assistant",
                                   extra={"trace": trace_of(order), "conv_say": order.say_id, "conv": True,

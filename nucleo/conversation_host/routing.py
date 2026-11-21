@@ -9,7 +9,29 @@ call, which reads HIS words and takes the call's fields only for what they leave
 """
 from __future__ import annotations
 
-_last = {"said": ""}
+_last = dict(said="", ours="", his=[])     # a record of the batch in course, never a table
+#: how many of his earlier sentences the owner reads beside the one now
+BEFORE = 2
+
+
+def ours_heard(text: str) -> None:
+    """A line of ours that SOUNDED (what of it he heard) or was shown: the last line the owner reads his answer against,
+    and — when it is the open draft's confirmation — the one thing a go-ahead can answer (`send.heard.heard`)."""
+    if not str(text or "").strip():
+        return
+    _last["ours"] = str(text)
+    try:
+        from nucleo.send import heard
+        heard.heard(str(text), spoken=True)
+    except Exception as e:  # noqa: BLE001 — an unreadable draft only means the confirmation is read again
+        __import__("logging").getLogger("zaelar.conversation_host").debug(f"routing: heard not noted ({e!r})")
+
+
+def _his(text: str) -> list[str]:
+    """His sentences before this one (the owner reads the last ones beside it), and this one kept for the next."""
+    before = list(_last["his"][-BEFORE:])
+    _last["his"] = (_last["his"] + [text])[-BEFORE:]
+    return before
 
 
 def said() -> str:
@@ -26,8 +48,9 @@ class HostRoute:
         from nucleo.conversation_host.acts_widget import _on_engine_loop
         from nucleo.send import draft, owner
         _last["said"] = text
+        before = _his(text)
         if draft.current() is not None:
-            took, line = await _on_engine_loop(owner.take(text))
+            took, line = await _on_engine_loop(owner.take(text, last_line=_last["ours"], before=before))
             if took:
                 return line or ""
         return None
@@ -42,5 +65,6 @@ async def send(args: dict, act: str = "") -> "object":
     hint = {k: v for k, v in args.items() if v not in (None, "", [], {})}
     if act:
         hint["_act"] = act
-    line = await _on_engine_loop(owner.intake(said() or " ".join(hint.values()), hint, by="call"))
+    line = await _on_engine_loop(owner.intake(said() or " ".join(hint.values()), hint, last_line=_last["ours"],
+                                              before=list(_last["his"][:-1][-BEFORE:]), by="call"))
     return ToolResult("ok" if line else "failed", {"say": line} if line else {"reason": "the owner took nothing"})
