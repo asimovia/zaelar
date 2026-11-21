@@ -14,5 +14,5 @@ from nucleo.conversation_host.declared import declared
 def test_the_declared_stop_rule_names_a_complaint_as_no_stop_and_the_prefix_carries_it():
     rule = declared()["stop_rule"]
     assert "complaint" in rule and rule.endswith("is no stop: answer it")
-    assert "work you are doing for him" in declared()["stops"]["stop_run"]
+    assert "the work in course" in declared()["stops"]["stop_run"]
     assert rule in prefix.build([], native="w_lang", name="w_name")
