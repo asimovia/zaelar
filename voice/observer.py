@@ -73,6 +73,7 @@ _CAT = {
     "step": "worker",   # refactor2710-15: a step of an errand kept off his screen (a show that was not its deliverable)
     "task": "worker", "verdict": "worker", "worker_act": "worker", "worker_start": "worker", "navegador": "worker",
     "task_state": "worker",   # V2-851: a row moved into its ending, written by `circuit.settle` (the writer named)
+    "queue": "worker",        # INI-078: a signal the orchestrator applied to a task of its queue (`queue/<what>`), or refused
     "ask_resolved": "worker", # V2-931: a confirmation question ended — answered (its record line) or superseded
     "play": "worker",         # V2-909: a step of an action's programme, or its drift from the path beside it (`play/step`, `play/drift`)
     # `task_progress` (2026-11-07): every meaningful move of a task row BEFORE its ending — born/opened (a snapshot with

@@ -703,16 +703,18 @@
    "name": "Task rows",
    "paths": [
     "nucleo/circuit/ledger.py",
-    "nucleo/request"
+    "nucleo/request",
+    "nucleo/queue"
    ],
    "emits": [
     "task_state",
     "task_progress",
     "errand",
     "step",
-    "thread"
+    "thread",
+    "queue"
    ],
-   "_doc": "The order's row (`nucleo/request/`): one row per intention. A send is one Brain Worker task with one confirmation at its exit door (`request/send_errand`); its final line is the connector's receipt (`request/send_receipt.py`), said through the out-of-turn notices."
+   "_doc": "The order's row (`nucleo/request/`): one row per intention. His real tasks are one queue in the same table (`nucleo/queue`), whose one writer applies the signals of the pulse, the owner and him (`queue/<what>`). A send is one Brain Worker task with one confirmation at its exit door (`request/send_errand`); its final line is the connector's receipt (`request/send_receipt.py`), said through the out-of-turn notices."
   },
   {
    "id": "t_circuit",

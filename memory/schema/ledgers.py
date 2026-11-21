@@ -176,6 +176,16 @@ TASKS_V11_COLUMNS = [(c, f"ALTER TABLE tasks ADD COLUMN {c} {t}") for c, t in (
     ("session_id", "TEXT"), ("cwd", "TEXT"), ("waiting_for", "TEXT"), ("waiting_since", "INTEGER"),
     ("deadline", "INTEGER"), ("ask_id", "TEXT"), ("ask", "TEXT"), ("playbook", "TEXT"))]
 
+# v12 → v13 (INI-078, the orchestrator): his real tasks are ONE queue in this table, with one writer (`nucleo/queue`):
+#   · `owner`     worker | send | processor — who runs it; NULL = not a task of the queue (a cron's mirror, an event
+#                 flow, an inline row, an internal escalation)
+#   · `priority`  1 = urgent («do it now»): first in its lane
+#   · `position`  the order inside a priority: a new one is the lane's max + 1, a move is the midpoint of its neighbours
+TASKS_V13_COLUMNS = [(c, f"ALTER TABLE tasks ADD COLUMN {c} {t}") for c, t in (
+    ("owner", "TEXT"), ("priority", "INTEGER NOT NULL DEFAULT 0"), ("position", "REAL"))]
+#: after the columns exist: the pulse's read «the next pending of this lane» is one index range
+TASKS_V13_INDEXES = ["CREATE INDEX IF NOT EXISTS idx_tasks_queue ON tasks(owner, state, priority DESC, position)"]
+
 TASKS_INDEXES = [
     # The hot read is the tab: «live, mine, in this mode». Composite for the same reason `idx_mem_lvu` is —
     # three single-column indexes do not serve one composite query.

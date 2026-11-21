@@ -22,6 +22,8 @@ from __future__ import annotations
 import json
 import time
 
+from loguru import logger
+
 from . import db as _db_mod
 
 #: States a task is still ALIVE in — what the «En curso» sub-tab and the rail counter read.
@@ -39,7 +41,9 @@ _COLUMNS = ("id", "title", "goal", "kind", "mode", "state", "visible", "origin",
             # V2-776 M — the circuit's verdict on how the request ended (see the v8→v9 note in `memory/schema/`)
             "verdict",
             # V2-851 F1a — what the task waits for and how it is resumed (see the v10→v11 note in `memory/schema/`)
-            "session_id", "cwd", "waiting_for", "waiting_since", "deadline", "ask_id", "ask", "playbook")
+            "session_id", "cwd", "waiting_for", "waiting_since", "deadline", "ask_id", "ask", "playbook",
+            # INI-078 — the orchestrator's queue: who runs it, how urgent, its order (see the v12→v13 note)
+            "owner", "priority", "position")
 
 
 def _row(r) -> dict:
@@ -218,6 +222,53 @@ def tasks_prune(max_age_days: float = 30.0, now: float | None = None) -> int:
         return len(ids)
     except Exception:  # noqa: BLE001
         return 0
+
+
+# ── the queue (INI-078): rows with an `owner`, written only by `nucleo/queue` ─────────────────────────────
+def queue_insert(row: dict) -> bool:
+    """Write one NEW task of the queue in one statement (an id already there is left as it is). True when written."""
+    tid = str(row.get("id") or "").strip()
+    if not tid:
+        return False
+    cols = [c for c in _COLUMNS if c in row and c not in ("schedule", "progress", "visible")]
+    try:
+        _db_mod.get_db().execute(
+            f"INSERT INTO tasks ({', '.join(cols)}) VALUES ({', '.join('?' for _ in cols)}) ON CONFLICT(id) DO NOTHING",
+            tuple(row[c] for c in cols))
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"tasks_store: queue row {tid} not written ({e!r})")
+        return False
+    _reindex(tid, str(row.get("title") or ""), str(row.get("goal") or ""))
+    return True
+
+
+def queue_archive(task_id: str) -> None:
+    """A task of the queue leaves it: its row and its index row go in ONE transaction; its artifacts — the result he
+    paid for — stay, named by the task's id. Never raises."""
+    tid = str(task_id or "").strip()
+    if not tid:
+        return
+    try:
+        with _db_mod.exclusive(_db_mod.get_db()) as conn:
+            conn.execute("DELETE FROM tasks WHERE id=?", (tid,))
+            try:
+                conn.execute("DELETE FROM fts_tasks WHERE task_id=?", (tid,))
+            except Exception as e:  # noqa: BLE001 — no FTS5 here: there is no index row to drop
+                logger.debug(f"tasks_store: no index row of {tid} to drop ({e!r})")
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"tasks_store: queue row {tid} not archived ({e!r})")
+
+
+def queue_rows(owner: str = "") -> list[dict]:
+    """The queue in its order: every row with an owner (or that owner's), by lane, priority and position."""
+    where, args = ("owner=?", (owner,)) if owner else ("owner IS NOT NULL AND owner<>''", ())
+    try:
+        rows = _db_mod.get_db().query(
+            f"SELECT * FROM tasks WHERE {where} ORDER BY owner, priority DESC, position ASC, created_at ASC", args)
+        return [_row(r) for r in rows]
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"tasks_store: the queue unread ({e!r})")
+        return []
 
 
 # ── read ─────────────────────────────────────────────────────────────────────────────────────────────────

@@ -192,9 +192,12 @@ class Database:
                 if tcols and name not in tcols:
                     self.conn.execute(stmt)
             # v8->v9 (V2-776 M): the row's verdict; v10->v11 (V2-851): what it waits for and how it resumes
-            for name, stmt in (*_schema.TASKS_V9_COLUMNS, *_schema.TASKS_V11_COLUMNS):
+            # v12->v13 (INI-078): the orchestrator's owner, priority and position, then the queue's index
+            for name, stmt in (*_schema.TASKS_V9_COLUMNS, *_schema.TASKS_V11_COLUMNS, *_schema.TASKS_V13_COLUMNS):
                 if tcols and name not in tcols:
                     self.conn.execute(stmt)
+            for stmt in _schema.TASKS_V13_INDEXES:
+                self.conn.execute(stmt)
             # v5->v6 (V2-242): give background pills their author in the KEY. Runs ONCE, gated on the version.
             if version < 6:
                 self._namespace_widget_slots()
